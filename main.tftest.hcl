@@ -7,7 +7,7 @@ run "example" {
 
   assert {
     condition     = output.cidrs == tolist(["0.0.0.0/30"])
-    error_message = "Fail"
+    error_message = "Got: ${join(", ", output.cidrs)}"
   }
 }
 
@@ -20,7 +20,7 @@ run "dup" {
 
   assert {
     condition     = output.cidrs == tolist(["10.0.0.0/8"])
-    error_message = "Fail"
+    error_message = "Got: ${join(", ", output.cidrs)}"
   }
 }
 
@@ -67,7 +67,7 @@ run "complete" {
 
   assert {
     condition     = output.cidrs == tolist(["0.0.0.0/0"])
-    error_message = "Fail"
+    error_message = "Got: ${join(", ", output.cidrs)}"
   }
 }
 
@@ -80,7 +80,7 @@ run "zero" {
 
   assert {
     condition     = output.cidrs == tolist(["0.0.0.0/0"])
-    error_message = "Fail"
+    error_message = "Got: ${join(", ", output.cidrs)}"
   }
 }
 
@@ -123,6 +123,48 @@ run "netaddr" {
       "52.219.208.0/22",
       "52.219.218.0/24",
     ])
-    error_message = "Fail"
+    error_message = "Got: ${join(", ", output.cidrs)}"
+  }
+}
+
+run "max_bits1" {
+  module { source = "./" }
+
+  variables {
+    cidrs    = ["128.0.0.0/1", "0.0.0.0/32", "0.0.0.1/32", "0.0.0.2/31"]
+    max_bits = 24
+  }
+
+  assert {
+    condition     = output.cidrs == tolist(["0.0.0.0/24", "128.0.0.0/1"])
+    error_message = "Got: ${join(", ", output.cidrs)}"
+  }
+}
+
+run "max_bits2" {
+  module { source = "./" }
+
+  variables {
+    cidrs    = ["0.0.0.0/1"]
+    max_bits = 1
+  }
+
+  assert {
+    condition     = output.cidrs == tolist(["0.0.0.0/1"])
+    error_message = "Got: ${join(", ", output.cidrs)}"
+  }
+}
+
+run "max_bits3" {
+  module { source = "./" }
+
+  variables {
+    cidrs    = ["1.1.0.0/24", "1.1.1.1/32", "2.2.2.0/24"]
+    max_bits = 24
+  }
+
+  assert {
+    condition     = output.cidrs == tolist(["1.1.0.0/23", "2.2.2.0/24"])
+    error_message = "Got: ${join(", ", output.cidrs)}"
   }
 }

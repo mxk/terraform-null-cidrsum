@@ -3,8 +3,11 @@ terraform {
 }
 
 locals {
-  # Normalize and group all CIDRs by prefix length
-  groups = { for v in [for v in var.cidrs : cidrsubnet(v, 0, 0)] : split("/", v)[1] => v... }
+  # Truncate bits, normalize, and group all CIDRs by prefix length
+  groups = {
+    for v in [for v in var.cidrs : split("/", v)] : min(v[1], var.max_bits) =>
+    cidrsubnet("${v[0]}/${min(v[1], var.max_bits)}", 0, 0)...
+  }
 
   # Convert to a list of sets indexed by prefix length
   s = [for i in range(33) : toset(lookup(local.groups, i, []))]
@@ -46,14 +49,17 @@ locals {
   s00 = toset([for k, v in { for v in setunion(local.s[01], local.s01) : cidrsubnet("${trimsuffix(v, "/1")}/0", 0, 0) => v... } : k if length(v) == 2])
   # @formatter:on
 
-  # Combine original and new CIDRs, and convert to a list to avoid sorting
-  all = tolist(setunion(
+  # Combine new CIDRs into a list of sets
+  n = [
     local.s00, local.s01, local.s02, local.s03, local.s04, local.s05, local.s06, local.s07,
     local.s08, local.s09, local.s10, local.s11, local.s12, local.s13, local.s14, local.s15,
     local.s16, local.s17, local.s18, local.s19, local.s20, local.s21, local.s22, local.s23,
     local.s24, local.s25, local.s26, local.s27, local.s28, local.s29, local.s30, local.s31,
-    local.s...
-  ))
+    toset([])
+  ]
+
+  # Combine original and new CIDRs into a list
+  all = flatten([for i in range(var.max_bits + 1) : setunion(local.s[i], local.n[i])])
 
   # Generate a list of parents (shorter prefixes) for each CIDR
   parents = {
